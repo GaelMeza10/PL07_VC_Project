@@ -7,29 +7,40 @@ import { TodoDialog } from "./todo-dialog"
 import { DeleteAlert } from "./delete-alert"
 import { Button } from "./ui/button"
 import { Plus } from "lucide-react"
-
 import { Skeleton } from "@/components/ui/skeleton"
+interface TodoListProps {
+  initialTodos: unknown[] // Using unknown to avoid heavy type duplication, explicitly cast inside
+}
 
-export function TodoList() {
-  const todos = useTodoStore((state) => state.todos)
-  // Dialog states
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [editingTodo, setEditingTodo] = useState<Todo | null>(null)
-  const [deletingTodo, setDeletingTodo] = useState<Todo | null>(null)
+export function TodoList({ initialTodos = [] }: TodoListProps) {
+  const storeTodos = useTodoStore((state) => state.todos)
   const { deleteTodo, sync } = useTodoStore()
+  const [isClient, setIsClient] = useState(false)
 
-  // Sync on mount
   useEffect(() => {
+    setIsClient(true)
     sync()
+    
+    // Also merge server data into store if needed? 
+    // For now, let's trust sync() to pull latest, but we can also seed.
+    // Actually, sync() fetches from API.
     
     const handleOnline = () => {
        console.log("Back online, syncing...")
        sync()
     }
-    
     window.addEventListener('online', handleOnline)
     return () => window.removeEventListener('online', handleOnline)
   }, [sync])
+
+  // Hydration fix: Use server data initially, then switch to store data
+  // This prevents hydration mismatch and skeleton flash
+  const todos = isClient ? storeTodos : (initialTodos as Todo[])
+  
+  // Dialog states
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [editingTodo, setEditingTodo] = useState<Todo | null>(null)
+  const [deletingTodo, setDeletingTodo] = useState<Todo | null>(null)
 
   const handleDeleteConfirm = () => {
     if (deletingTodo) {
@@ -57,9 +68,9 @@ export function TodoList() {
           />
         ))}
         {todos.length === 0 && (
-            <div className="col-span-full text-center py-20 text-muted-foreground bg-muted/20 rounded-lg border-2 border-dashed">
-                <p>No tasks yet. Create one to get started!</p>
-            </div>
+                <div className="col-span-full text-center py-20 text-muted-foreground bg-muted/20 rounded-lg border-2 border-dashed">
+                    <p>No tasks yet. Create one to get started!</p>
+                </div>
         )}
       </div>
 

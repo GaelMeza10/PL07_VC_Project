@@ -36,7 +36,7 @@ export const TodoCard = memo(function TodoCard({ todo, onEdit, onDelete }: TodoC
         </div>
       </CardHeader>
       <CardFooter className="text-xs text-muted-foreground pt-2">
-         Created: {new Date(todo.createdAt).toLocaleDateString()}
+         Created: {new Date(todo.createdAt).toLocaleDateString('en-GB')}
          {!todo.isSynced && <span className="ml-2 text-yellow-600">(Unsynced)</span>}
       </CardFooter>
     </Card>

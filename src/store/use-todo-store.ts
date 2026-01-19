@@ -40,11 +40,13 @@ export const useTodoStore = create<TodoState>()(
         
         // INSTANT UI UPDATE
         set((state) => ({ todos: [newTodo, ...state.todos] }))
-        toast.success("Todo created")
 
-        // Trigger background sync immediately if online
+        // Trigger background sync only if online
         if (navigator.onLine) {
+            toast.success("Todo created")
             get().sync()
+        } else {
+             toast.warning("Created locally. Reload/Reconnect to sync.")
         }
       },
 
