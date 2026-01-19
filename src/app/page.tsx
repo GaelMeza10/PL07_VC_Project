@@ -1,15 +1,19 @@
-import { TodoList } from "@/components/todo-list";
+import { Header } from "@/components/header";
+import { TodoListWrapper } from "@/components/todo-list-wrapper";
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-background p-8">
-      <div className="mx-auto max-w-7xl">
-        <header className="mb-10 text-center">
-            <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl mb-2">My Fast Todo</h1>
-            <p className="text-muted-foreground">High performance, offline-first task management</p>
-        </header>
-        <TodoList />
-      </div>
-    </main>
+    <div className="min-h-screen bg-background">
+      <Header />
+      <main className="container mx-auto p-4 py-8 max-w-7xl">
+        <div className="flex flex-col gap-8">
+            <div className="flex flex-col gap-2">
+                <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+                <p className="text-muted-foreground">Manage your tasks efficiently.</p>
+            </div>
+            <TodoListWrapper />
+        </div>
+      </main>
+    </div>
   );
 }

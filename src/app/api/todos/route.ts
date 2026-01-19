@@ -1,40 +1,52 @@
 import { NextResponse } from 'next/server'
 import connectDB from '@/lib/db'
 import Todo from '@/models/Todo'
+import { cookies } from 'next/headers'
+import { verifyToken } from '@/lib/auth'
+
+async function getUser() {
+    const cookieStore = await cookies()
+    const token = cookieStore.get('token')?.value
+    if (!token) return null
+    
+    const payload = await verifyToken(token)
+    return payload // { userId, email, name, ... }
+}
 
 export async function GET() {
   try {
+    const user = await getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
     await connectDB()
-    const todos = await Todo.find({}).sort({ createdAt: -1 })
-    // Map _id to id for frontend compatibility if needed, though frontend currently generates IDs locally. 
-    // Ideally we should sync these. For this hybrid approach:
-    // We return the DB todos. The frontend store might need adjustment if we want true sync.
-    // However, the current "offline-first" store uses UUIDs.
-    // To make this fully real-time sync friendly, we often conform to the DB ID.
-    // For now, let's return the data. 
+    // Scope to userId
+    const todos = await Todo.find({ userId: user.userId as string }).sort({ createdAt: -1 })
+    
     return NextResponse.json(todos)
   } catch (error) {
+    console.error("GET /api/todos failed:", error)
     return NextResponse.json({ error: 'Failed to fetch todos' }, { status: 500 })
   }
 }
 
 export async function POST(request: Request) {
   try {
+    const user = await getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      
     await connectDB()
     const body = await request.json()
-    // We use the body provided. The frontend sends an object with an ID (uuid).
-    // MongoDB generates its own _id.
-    // Strategy: We can store the frontend 'id' as 'uuid' or just rely on MongoDB _id.
-    // given the prompt "create .env and connect direct mongodb ... to real time create delete etc"
-    // The simplest path to "best practices" is usually letting DB generate IDs.
-    // But our frontend is offline-first (optimistic).
     
-    // Let's create the todo. We'll ignore the client-side ID for the DB record itself to follow standard Mongo practice,
-    // OR we can save it as a separate field if we want to correlate.
-    // However, to keep it simple and working with the existing store:
-    // We'll create the record.
+    // Upsert logic with userId scope
+    // Try to create. If ID exists (and belongs to user?), error.
+    // However, for sync, we might want to check existence.
+    // To keep it simple per "best practices": 
+    // We create. If collision, we catch. But since IDs are UUIDs, collision is rare.
+    // The main protection is: we assume the user OWNS the item they are creating.
+    
     const todo = await Todo.create({
         id: body.id,
+        userId: user.userId as string, // Critical: Assign ownership
         title: body.title,
         description: body.description,
         createdAt: body.createdAt || Date.now()
@@ -42,58 +54,56 @@ export async function POST(request: Request) {
     
     return NextResponse.json(todo)
   } catch (error) {
+    // If error is duplicate key on 'id', we might want to handle it.
+    console.error("POST /api/todos failed:", error)
     return NextResponse.json({ error: 'Failed to create todo' }, { status: 500 })
   }
 }
 
 export async function PUT(request: Request) {
     try {
+        const user = await getUser()
+        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
         await connectDB()
         const body = await request.json()
         const { id, title, description } = body
-        // Note: The frontend sends the 'id' which currently is a UUID. 
-        // If we want to update by that UUID, we need to have stored it or we need to switch frontend to use _id.
-        // For a seamless transition without rewriting the whole store logic:
-        // We will assume for a moment the user might be okay with 'fire and forget' sync or we need to align IDs.
         
-        // CRITICAL FIX: The current frontend generates UUIDs. MongoDB has _id.
-        // If we only just started, the DB is empty.
-        // Option A: modifying the model to accept a custom string _id (the uuid).
-        // Option B: frontend uses the response _id to update itself.
+        // Scope update to userId to prevent editing others' data
+        const todo = await Todo.findOneAndUpdate(
+            { id: id, userId: user.userId as string }, 
+            { title, description }, 
+            { new: true }
+        )
         
-        // Let's try to find by _id first (if we aligned them) or we need to trust the flow.
-        // Given current Store implementation: `updateTodo` sends `id`.
-        // If this ID is a UUID, `findById` will fail if it expects an ObjectId.
-        
-        // Let's update the Todo model to explicitly store the 'id' field as string if we want to match frontend UUIDs,
-        // OR simpler: assume we are transitioning.
-        
-        // DECISION: To make the "real time create delete" work best with the existing "offline first" code:
-        // We should probably rely on the DB ID. But since I can't easily change the frontend to wait for DB ID before showing (it's optimistic),
-        // I will add an `id` field to the Mongoose schema in the next step to store the UUID.
-        // This is the safest bridge.
-        
-        const todo = await Todo.findOneAndUpdate({ id: id }, { title, description }, { new: true })
         if (!todo) {
-             return NextResponse.json({ error: 'Todo not found' }, { status: 404 })
+             // Try to create (Upsert) if not found?
+             // Only if we trust the client to have the right data. 
+             // Logic in store tries POST first then PUT. So we just return 404 here.
+             return NextResponse.json({ error: 'Todo not found or unauthorized' }, { status: 404 })
         }
         return NextResponse.json(todo)
-    } catch (error) {
-        return NextResponse.json({ error: 'Failed to update todo' }, { status: 500 })
-    }
+  } catch (error) {
+    console.error("PUT /api/todos failed:", error)
+    return NextResponse.json({ error: 'Failed to update todo' }, { status: 500 })
+  }
 }
 
 export async function DELETE(request: Request) {
     try {
+        const user = await getUser()
+        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
         await connectDB()
         const body = await request.json()
         const { id } = body
         
-        // Uses the 'id' field (UUID)
-        await Todo.findOneAndDelete({ id: id })
+        // Scope delete to userId
+        await Todo.findOneAndDelete({ id: id, userId: user.userId as string })
         
         return NextResponse.json({ success: true })
     } catch (error) {
+        console.error("DELETE /api/todos failed:", error)
         return NextResponse.json({ error: 'Failed to delete todo' }, { status: 500 })
     }
 }

@@ -8,22 +8,20 @@ import { DeleteAlert } from "./delete-alert"
 import { Button } from "./ui/button"
 import { Plus } from "lucide-react"
 
+import { Skeleton } from "@/components/ui/skeleton"
+
 export function TodoList() {
   const todos = useTodoStore((state) => state.todos)
-  const [isMounted, setIsMounted] = useState(false)
-  
   // Dialog states
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null)
   const [deletingTodo, setDeletingTodo] = useState<Todo | null>(null)
   const { deleteTodo, sync } = useTodoStore()
 
+  // Sync on mount
   useEffect(() => {
-    setIsMounted(true)
-    // Sync on mount
     sync()
     
-    // Listen for online status
     const handleOnline = () => {
        console.log("Back online, syncing...")
        sync()
@@ -32,10 +30,6 @@ export function TodoList() {
     window.addEventListener('online', handleOnline)
     return () => window.removeEventListener('online', handleOnline)
   }, [sync])
-
-  if (!isMounted) {
-    return <div className="p-8 text-center text-muted-foreground">Loading specific data...</div>
-  }
 
   const handleDeleteConfirm = () => {
     if (deletingTodo) {
