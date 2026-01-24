@@ -13,6 +13,13 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useTodoStore } from "@/store/use-todo-store"
 
 interface TodoDialogProps {
@@ -22,6 +29,9 @@ interface TodoDialogProps {
   todoId?: string
   initialTitle?: string
   initialDescription?: string
+  initialStatus?: string
+  initialCategory?: string
+  initialPriority?: string
 }
 
 export function TodoDialog({
@@ -31,47 +41,57 @@ export function TodoDialog({
   todoId,
   initialTitle = '',
   initialDescription = '',
+  initialStatus = 'Todo',
+  initialCategory = 'Feature',
+  initialPriority = 'Normal',
 }: TodoDialogProps) {
   const [title, setTitle] = useState(initialTitle)
   const [description, setDescription] = useState(initialDescription)
+  const [status, setStatus] = useState(initialStatus)
+  const [category, setCategory] = useState(initialCategory)
+  const [priority, setPriority] = useState(initialPriority)
   const { addTodo, updateTodo } = useTodoStore()
 
   useEffect(() => {
     if (open) {
       setTitle(initialTitle)
       setDescription(initialDescription)
+      setStatus(initialStatus)
+      setCategory(initialCategory)
+      setPriority(initialPriority)
     }
-  }, [open, initialTitle, initialDescription])
+  }, [open, initialTitle, initialDescription, initialStatus, initialCategory, initialPriority])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim()) return
 
-    // Optimistic Update: Close immediately
     onOpenChange(false)
 
     if (mode === 'create') {
-      addTodo(title, description)
+      addTodo(title, description, status, category, priority)
     } else if (mode === 'edit' && todoId) {
-      updateTodo(todoId, title, description)
+      updateTodo(todoId, title, description, status, category, priority)
     }
     
-    // Reset form after close
     setTimeout(() => {
-        setTitle('')
-        setDescription('')
+      setTitle('')
+      setDescription('')
+      setStatus('Todo')
+      setCategory('Feature')
+      setPriority('Normal')
     }, 300)
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>{mode === 'create' ? 'Create Todo' : 'Edit Todo'}</DialogTitle>
           <DialogDescription>
             {mode === 'create' 
-              ? "Add a new task to your list. Click save when you're done." 
-              : "Make changes to your task here. Click save when you're done."}
+              ? "Add a new task to your list." 
+              : "Make changes to your task."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-4 py-4">
@@ -84,10 +104,11 @@ export function TodoDialog({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="col-span-3"
-              placeholder="Groceries"
+              placeholder="Task title..."
               autoFocus
             />
           </div>
+          
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="description" className="text-right">
               Description
@@ -97,9 +118,63 @@ export function TodoDialog({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="col-span-3"
-              placeholder="Buy milk and eggs..."
+              placeholder="Task description..."
+              rows={3}
             />
           </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="status" className="text-right">
+              Status
+            </Label>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Pending">Pending</SelectItem>
+                <SelectItem value="Todo">Todo</SelectItem>
+                <SelectItem value="In Progress">In Progress</SelectItem>
+                <SelectItem value="Completed">Completed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="category" className="text-right">
+              Category
+            </Label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Bug">Bug</SelectItem>
+                <SelectItem value="Feature">Feature</SelectItem>
+                <SelectItem value="Docs">Docs</SelectItem>
+                <SelectItem value="Improvement">Improvement</SelectItem>
+                <SelectItem value="Refactor">Refactor</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="priority" className="text-right">
+              Priority
+            </Label>
+            <Select value={priority} onValueChange={setPriority}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Minor">Minor</SelectItem>
+                <SelectItem value="Normal">Normal</SelectItem>
+                <SelectItem value="Important">Important</SelectItem>
+                <SelectItem value="Critical">Critical</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <DialogFooter>
             <Button type="submit">Save changes</Button>
           </DialogFooter>

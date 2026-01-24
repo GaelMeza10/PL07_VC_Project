@@ -46,9 +46,13 @@ export async function POST(request: Request) {
     
     const todo = await Todo.create({
         id: body.id,
-        userId: user.userId as string, // Critical: Assign ownership
+        userId: user.userId as string,
+        listId: body.listId,
         title: body.title,
         description: body.description,
+        status: body.status || 'Todo',
+        category: body.category || 'Feature',
+        priority: body.priority || 'Normal',
         createdAt: body.createdAt || Date.now()
     })
     
@@ -67,12 +71,17 @@ export async function PUT(request: Request) {
 
         await connectDB()
         const body = await request.json()
-        const { id, title, description } = body
+        const { id, title, description, listId, status, category, priority } = body
         
-        // Scope update to userId to prevent editing others' data
+        const updateFields: any = { title, description }
+        if (listId) updateFields.listId = listId
+        if (status) updateFields.status = status
+        if (category) updateFields.category = category
+        if (priority) updateFields.priority = priority
+        
         const todo = await Todo.findOneAndUpdate(
             { id: id, userId: user.userId as string }, 
-            { title, description }, 
+            updateFields, 
             { new: true }
         )
         

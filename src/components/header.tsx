@@ -35,7 +35,7 @@ export function Header() {
 
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4 max-w-7xl">
             <div className="flex items-center gap-2 font-bold text-2xl tracking-tight">
                 <span className="text-primary">Fast</span>Todo
             </div>
